@@ -6,26 +6,28 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Sorting</title>
         <!-- bootstrap -->
-        <link
-        rel="stylesheet" href="./css/bootstrap.min.css">
+        <link rel="stylesheet" href="./css/bootstrap.min.css">
+        <!-- fontawesome -->
+        <link rel="stylesheet" href="./css/all.min.css">
         <!-- main -->
         <link rel="stylesheet" href="./css/style.css">
     </head>
     <body>
         <div class="jumbotron d-flex jumbotron-fluid bg-dark header">
-            <div class="boxes m-auto">
-                <span class="btn">1</span>
-                <span class="btn">2</span>
-                <span class="btn">3</span>
-                <span class="btn">4</span>
+            <div class="boxes m-auto tile-container">
+                <span class="btn tile">1</span>
+                <span class="btn tile">2</span>
+                <span class="btn tile">3</span>
+                <span class="btn tile">4</span>
             </div>
-          </div>
+        </div>
+        <i class="btn icon fas fa-random"></i>
 
         <div class="container d-flex">
             <div class="other-buttons mx-auto">
-                <button class="btn">Bubble Sort</button>
-                <button class="btn">Linear Sort</button>
-                <button class="btn">Insertion Sort</button>
+                <button class="btn" id="buble-sort">Bubble Sort</button>
+                <button class="btn" id="linear-sort">Linear Sort</button>
+                <button class="btn" id="insertion-sort">Insertion Sort</button>
             </div>
         </div>
 

@@ -11,3 +11,22 @@
 .header{
   height: 20em;
 }
+
+
+.fa-random{
+  position: absolute;
+  margin-top: -100px;
+  right: 20px;
+  font-size: small;
+  cursor: pointer;
+}
+
+
+.tile{
+  transition: transform .5s ease-out;
+}
+
+/* test */
+/* .tile:first-child{
+  transform: translateY(-40px);
+} */
