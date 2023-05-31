@@ -1,0 +1,13 @@
+
+/* btn */
+.btn {
+    color:black;
+    background-color: #faebd7;
+    border-color: #faebd7;
+    box-shadow: 3px 3px 6px #85858547;
+}
+
+
+.header{
+  height: 20em;
+}
