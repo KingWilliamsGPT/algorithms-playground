@@ -8,7 +8,8 @@
  */
 
 
-// CONSTANTS
+/////////////////////////// CONSTANTS
+
 const LEFT = -1;
 const RIGHT = 1;
 const UP = -1;
@@ -16,14 +17,17 @@ const DOWN = 1;
 const MAX_Y_SLIDE = 2;
 var jq;
 
+/////////////////////////// HELPERS
+
 /**
  * Assuming all elements in array are pixel values convert to float
  * eg. ['2px', '5.5px'] => [2, 5.5]
  * @param {Array} pixels array of pixels
  */
-function _intergise(pixels){
+function _pixelToFloats(pixels){
     return pixels.map((val, _)=>Number.parseFloat(val.slice(0, -1)));
 }
+
 
 function assert(condition, msg){
     msg = msg || '';
@@ -32,11 +36,14 @@ function assert(condition, msg){
     }
 }
 
+
 function sum(array){
     return array.reduce((prev, current)=>{
         return prev + current;
     });
 }
+
+/////////////////////////// ARRAY
 
 function array_has(array, item){
     return array.indexOf(item) !== item;
@@ -45,6 +52,29 @@ function array_has(array, item){
 Array.prototype.has = function(item){
     return array_has(this, item);
 }
+
+
+/////////////////////////// DOM
+
+/**
+ * Returns width of dom element considering padding and borders
+ */
+function trueWidth($Elem){
+    let paddingOffset = _pixelToFloats([$Elem.css('padding-left'), $Elem.css('padding-right'), $Elem.css('border-left-width'), $Elem.css('border-right-width')]);
+    return sum([$Elem.width(), ...paddingOffset]);
+}
+
+/**
+ * Returns height of dom element considering padding and borders
+ */
+function trueHeight($Elem){
+    let paddingOffset = _pixelToFloats([$Elem.css('padding-top'), $Elem.css('padding-bottom'), $Elem.css('border-bottom-width'), $Elem.css('border-top-width')]);
+    return sum([$Elem.height(), ...paddingOffset]);
+}
+
+
+/////////////////////////// CLASSES
+
 
 /**
  * Represent each block in a tile container 
@@ -65,6 +95,8 @@ class Tile{
         this.possibleDirections = [1, -1];
         this.possbleStatesY = [-1, 0, 1];
         this._tileContainer = tileContainer;
+        this.translateX = 0;
+        this.translateY = 0;
     }
 
     get containerSize(){
@@ -73,32 +105,48 @@ class Tile{
 
     get width(){
         let jq = this.jQueryObject;
-        let paddingOffset = _intergise([jq.css('padding-left'), jq.css('padding-right'), jq.css('border-left-width'), jq.css('border-right-width')]);
-        return sum([jq.width(), ...paddingOffset]);
+        return trueWidth(jq);
     }
 
     get height(){
         let jq = this.jQueryObject;
-        let paddingOffset = _intergise([jq.css('padding-top'), jq.css('padding-bottom'), jq.css('border-bottom-width'), jq.css('border-top-width')]);
-        return sum([jq.height(), ...paddingOffset]);
+        return trueHeight(jq);
     }
 
+    get parentSize(){
+        // width of the parent elem
+        return this.jQueryObject.width();
+    }
+
+    translate(){
+        this.jQueryObject.css('transform', `translateX(${ this.translateX }px) translateY(${ this.translateY }px)`);
+    }
     
     slideUp(places){
-        this.slideY(UP, places);
+        return this.slideY(UP, places);
     }
     
     slideDown(places){
-        this.slideY(DOWN, places);
+        return this.slideY(DOWN, places);
     }
 
     slideLeft(places){
-        this.slideX(-1, places);
+        return this.slideX(-1, places);
     }
 
     slideRight(place){
-        this.slideX(1, place);
+        return this.slideX(1, place);
     }
+
+    restore(){
+        // may not use this for a while but i thought it necessary
+        this.translateX = 0;
+        this.translateY = 0;
+        this.translate();
+    }
+    // NOTE: YOU CAN'T CALL SLIDEX AND SLIDEY SEQUENTIALLY AS 
+    // AS THE LATER WILL QUICKLY OVERIDE THE FORMER AND ONLY THE ANIMATION
+    // FOR THE LATER WILL PLAY
 
     /**
      * 
@@ -108,12 +156,27 @@ class Tile{
     slideX(direction, places){
         places = Math.abs(places);
         assert(this.possibleDirections.has(direction), `Invalid direction ${direction}`);
+        
         const multiplier = places * direction;
         const newState = this.currentXState + multiplier;
         assert(newState >= 0 && newState <= this.containerSize -1, `invalid state ${places}`);
-        const displacement = (this.width) * multiplier;
-        this.jQueryObject.css('transform', `translateX(${ displacement }px)`);
+        
+        var displacement = (this.width) * multiplier;
+
+        // calculate small displacement discrepancies from box margins
+        const margins = 5; // margin between boxes
+        displacement += margins * places;
+
+        this.translateX = displacement;
+        this.translate();
         this.currentXState = newState - 1;
+
+        return new Promise((resolve, reject)=>{
+            // call
+            this.jQueryObject.on('transitionend', ()=>{
+                resolve();
+            });
+        });
     }
     /**
      * 
@@ -134,9 +197,16 @@ class Tile{
         }
         const displacement = (this.height + 15) * multiplier;
 
-        // console.log(`translateY(${ displacement * multiplier }px)`);
-        this.jQueryObject.css('transform', `translateY(${ displacement }px)`);
+        this.translateY = displacement;
+        this.translate();
         this.currentYState = newState;
+        
+        return new Promise((resolve, reject)=>{
+            // call
+            this.jQueryObject.on('transitionend', ()=>{
+                resolve();
+            });
+        });
     }
 
 }
@@ -153,18 +223,6 @@ class TileContainer{
         });
     }
 
-    bubbleSort(){
-
-    }
-
-    linearSort(){
-
-    }
-
-    insertionSort(){
-        
-    }
-
     shuffle(){
         console.log('shuffling...');
         const x = this.tiles[0];
@@ -178,8 +236,16 @@ class TileContainer{
      * @param {Number} places how many places in some direction
      */
     moveTo(tile, direction, places){
-        // tile.slideUp(1);
-        tile.slideRight(3);
+        tile.slideDown(1)
+            .then(()=>{
+                tile.slideRight(1)
+                .then(()=>{
+                    tile.slideUp(0)
+                    .then(()=>{
+                        tile.restore();
+                    });
+                });
+            })
         // tile.slideX(by=places);
         // tile.restoreY() // or slideDown();
     }
@@ -204,7 +270,7 @@ class Main{
         });
         $('.fa-random').on('click', ()=>{
             tileContainer.shuffle();
-        });
+        }).click();
     }
 }
 

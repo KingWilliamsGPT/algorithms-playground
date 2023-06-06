@@ -24,9 +24,19 @@
 
 .tile{
   transition: transform .5s ease-out;
+  margin-right: 5px;
+}
+
+.tile:last-child{
+  margin-right: 0;
 }
 
 /* test */
 /* .tile:first-child{
   transform: translateY(-40px);
 } */
+
+
+.boxes {
+  /* border: thin solid aliceblue */
+}
