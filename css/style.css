@@ -25,6 +25,8 @@
 .tile{
   transition: transform .5s ease-out;
   margin-right: 5px;
+  width: 30 !important;
+  text-align: center;
 }
 
 .tile:last-child{

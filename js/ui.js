@@ -15,7 +15,6 @@ const RIGHT = 1;
 const UP = -1;
 const DOWN = 1;
 const MAX_Y_SLIDE = 2;
-var jq;
 
 /////////////////////////// HELPERS
 
@@ -43,6 +42,20 @@ function sum(array){
     });
 }
 
+Random = {
+    rand: function rand(min, max) {
+        // return a random item from min to max (including boundaries)
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    },
+    choice: function choice(array){
+        // return a random item in array
+        return array[rand(0, array.length - 1)]
+    }
+}
+
+
+
+
 /////////////////////////// ARRAY
 
 function array_has(array, item){
@@ -53,6 +66,22 @@ Array.prototype.has = function(item){
     return array_has(this, item);
 }
 
+function swap(array, index1, index2){
+    if(index1 === index2){
+        console.warn('invalid arguments the same index was repeated twice', index1);
+    }
+    const hold = array[index1];
+    array[index1] =  array[index2];
+    array[index2] = hold;
+}
+
+Array.prototype.swap = function(index1, index2){
+    return swap(this, index1, index2);
+}
+
+Array.copy = function copy(array){
+    return [...array];
+}
 
 /////////////////////////// DOM
 
@@ -91,7 +120,7 @@ class Tile{
         this.value = value;
         this.jQueryObject = jQueryObject;
         this.currentYState = 0; // mid: 0, top: -1, bottom: 1,
-        this.currentXState = index;
+        this.currentXState = index;  // leave this
         this.possibleDirections = [1, -1];
         this.possbleStatesY = [-1, 0, 1];
         this._tileContainer = tileContainer;
@@ -116,6 +145,17 @@ class Tile{
     get parentSize(){
         // width of the parent elem
         return this.jQueryObject.width();
+    }
+
+    /**
+     * @param {number} newIndex
+     */
+    set index(newIndex){
+        this.currentXState = newIndex;
+    }
+
+    get index(){
+        return this.currentXState;
     }
 
     translate(){
@@ -144,6 +184,7 @@ class Tile{
         this.translateY = 0;
         this.translate();
     }
+    
     // NOTE: YOU CAN'T CALL SLIDEX AND SLIDEY SEQUENTIALLY AS 
     // AS THE LATER WILL QUICKLY OVERIDE THE FORMER AND ONLY THE ANIMATION
     // FOR THE LATER WILL PLAY
@@ -159,17 +200,19 @@ class Tile{
         
         const multiplier = places * direction;
         const newState = this.currentXState + multiplier;
-        assert(newState >= 0 && newState <= this.containerSize -1, `invalid state ${places}`);
+
+        // check if newState is within array
+        assert(newState >= 0 && newState <= this.containerSize -1, `invalid new state ${newState} from current state ${this.currentXState}`);
         
         var displacement = (this.width) * multiplier;
 
         // calculate small displacement discrepancies from box margins
-        const margins = 5; // margin between boxes
+        const margins = 5 * direction; // margin between boxes
         displacement += margins * places;
 
-        this.translateX = displacement;
+        this.translateX += displacement;
         this.translate();
-        this.currentXState = newState - 1;
+        this.currentXState = newState; //- 1;
 
         return new Promise((resolve, reject)=>{
             // call
@@ -178,6 +221,7 @@ class Tile{
             });
         });
     }
+    
     /**
      * 
      * @param {Number} direction -1 or 1 
@@ -216,26 +260,29 @@ class Tile{
  */
 class TileContainer{
     constructor($tiles){
-        this.tiles = $tiles.map((index, $tile)=>{
-            $tile = $($tile);
-            jq = $tile;
-            return new Tile($tile.text(), index, $tile, this);
-        });
+        this.tiles = this.toTiles($tiles);
     }
 
-    shuffle(){
-        console.log('shuffling...');
-        const x = this.tiles[0];
-        this.moveTo(x, RIGHT, 2);
+    async shuffle(){
+        const copyT = Array.copy(this.tiles);
+        let i = 0;
+        while(copyT.length > 0){
+            // df
+            // let len = copyT.length;
+            let first = copyT.shift();
+            let second = copyT.splice(Random.rand(0, copyT.length), 1)[0];
+            // console.log(second, i)  
+            if(!second){
+                // console.log('exited', i);
+                return;
+            }
+            i++;
+            this.swapFast(first, second.index);
+        }
     }
 
-    /**
-     * slide a tile
-     * @param {Tile} tile The tile to slide
-     * @param {Number} direction left or right {x:1,-1}
-     * @param {Number} places how many places in some direction
-     */
-    moveTo(tile, direction, places){
+    demo(tile){
+        // call this to show demo 
         tile.slideDown(1)
             .then(()=>{
                 tile.slideRight(1)
@@ -245,9 +292,77 @@ class TileContainer{
                         tile.restore();
                     });
                 });
-            })
-        // tile.slideX(by=places);
-        // tile.restoreY() // or slideDown();
+            });
+    }
+
+    select(tile){
+        return tile.slideUp(1);
+    }
+
+    deselect(tile){
+        return tile.slideDown(0);
+    }
+
+    async swapFast(tile, index){
+        
+        if (tile.index == index){
+            console.warn("can't swap to myself");
+            return;
+        }
+
+        const direction = tile.index < index ? 1 : -1;
+        const places = Math.abs(tile.index -  index);
+        const otherTile = this.tiles[index];
+
+        tile.slideX(direction, places);
+        await otherTile.slideX(direction * -1, places);
+
+        swap(this.tiles, tile.index, otherTile.index);
+    }
+
+    /**
+     * Swap position of tiles
+     * @param {Tile} tile 
+     * @param {Number} index 
+     */
+    async swapPos(tile, index){
+        
+        if (tile.index == index){
+            console.warn("can't swap to myself");
+            return;
+        }
+        
+
+        await this.select(tile);
+        
+        const direction = tile.index < index ? 1 : -1;
+
+        while (tile.index != index){
+            const places = 1;  // keep moving tile by one in given direction it reaches dest [target index]
+            const otherTile = this.tiles[tile.index + places * direction];
+
+            tile.slideX(direction, places);
+            await otherTile.slideX(direction * -1, places) // slide to the opposite direction
+            
+            .then(()=>{
+                if(tile.index == index){
+                    this.deselect(tile);
+                }
+            });
+
+            swap(this.tiles, tile.index, otherTile.index);
+        }
+
+    }
+
+    /**
+     * @returns {Array}
+     */
+    toTiles(domElems){
+        return [...domElems.map((index, $tile)=>{
+            $tile = $($tile);
+            return new Tile($tile.text(), index, $tile, this);
+        })];
     }
 }
 
@@ -257,8 +372,8 @@ class Main{
         const $tileContainer = $('.tile-container');
         const $tiles = $tileContainer.find('.tile');
 
-        
         const tileContainer = new TileContainer($tiles);
+        
         $('#bubble-sort').on('click', ()=>{
             tileContainer.bubbleSort();
         });
