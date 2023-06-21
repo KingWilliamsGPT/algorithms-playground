@@ -105,6 +105,95 @@ function trueHeight($Elem){
 /////////////////////////// CLASSES
 
 
+class Cursor{
+
+    constructor($parent){
+        this.$parent = $parent;
+        this.$cursor = $(document.createElement('span'));
+        this.$cursor.addClass('cursor fas fa-caret-up hide');
+        $parent.append(this.$cursor);
+    }
+
+    on(){
+        this.$cursor.removeClass('hide hide2');
+    }
+
+    off(){
+        this.on();
+        this.$cursor.addClass('hide2')
+    }
+
+
+}
+
+/**
+ * A slider is a conceptual scale like movable thingy, that points to two things
+ * in an array at any point moving obviously makes it point to different things
+ * it initialy starts at position 0 and returns items 0 and 1 move it to 1 it returns 1 and 2
+ * set it out of bounds and it will reset it self at one end of the given array negative
+ * values it will reset to 0; positive it will reset at Array.length - 2
+ */
+class Slider{
+
+    constructor(arrayLike){
+        this.arrayLike = arrayLike;
+        this._currentPos = 0; // one dimensional
+
+        if(arrayLike.length < 2){
+            throw Error('Array must contain at least 2 elements')
+        }
+    }
+
+    /**
+     * @param {number} pos
+     */
+    set currentPos(pos){
+        this.give().forEach((i)=>{
+            i.cursor.off();
+        });
+        this._currentPos = pos;
+        this.give().forEach(i=>{
+            i.cursor.on();
+        });
+    }
+
+    get currentPos(){
+        return this._currentPos;
+    }
+
+    give(){
+        return [this.arrayLike[this.currentPos], this.arrayLike[this.currentPos + 1]];
+    }
+
+    shiftLeft(){
+        if (this.currentPos - 1 < 0) {
+            // throw Error("Can't move left at this point");
+            console.warn("Can't move left at this point"); return;
+        }
+        this.currentPos--;
+    }
+
+    shiftRight(){
+        if (this.currentPos + 1 > this.arrayLike.length - 2) {
+            // throw Error("Can't move right at this point");
+            console.warn("Can't move right at this point"); return;
+        }
+        this.currentPos++;
+    }
+
+    moveToEnd(){
+        this.currentPos = this.arrayLike.length - 2;
+    }
+
+    atLeftEnd(){
+        return this._currentPos == 0;
+    }
+
+    atRightEnd(){
+        return this._currentPos == 0;
+    }
+}
+
 /**
  * Represent each block in a tile container 
  */
@@ -126,6 +215,9 @@ class Tile{
         this._tileContainer = tileContainer;
         this.translateX = 0;
         this.translateY = 0;
+
+        this.cursor = new Cursor(this.jQueryObject);
+        // this.cursor.on();
     }
 
     get containerSize(){
@@ -253,6 +345,9 @@ class Tile{
         });
     }
 
+    lock(){
+        // set this tile as immovable
+    }
 }
 
 /**
@@ -261,6 +356,7 @@ class Tile{
 class TileContainer{
     constructor($tiles){
         this.tiles = this.toTiles($tiles);
+        this.slider = new Slider(this.tiles);
     }
 
     async shuffle(){
@@ -344,11 +440,15 @@ class TileContainer{
             tile.slideX(direction, places);
             await otherTile.slideX(direction * -1, places) // slide to the opposite direction
             
-            .then(()=>{
-                if(tile.index == index){
-                    this.deselect(tile);
-                }
-            });
+            // .then(()=>{
+            //     if(tile.index == index){
+            //         this.deselect(tile);
+            //     }
+            // });
+
+            if(tile.index == index){
+                await this.deselect(tile);
+            }
 
             swap(this.tiles, tile.index, otherTile.index);
         }
@@ -385,7 +485,10 @@ class Main{
         });
         $('.fa-random').on('click', ()=>{
             tileContainer.shuffle();
-        }).click();
+        });//.click();
+
+
+        Sorting.bsort(tileContainer);
     }
 }
 

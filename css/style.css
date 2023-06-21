@@ -27,6 +27,8 @@
   margin-right: 5px;
   width: 30 !important;
   text-align: center;
+  display: block;
+  position: relative;
 }
 
 .tile:last-child{
@@ -38,6 +40,27 @@
   transform: translateY(-40px);
 } */
 
+
+.tile .cursor{
+  width: 20px;
+  height: 20px;
+  color: rgb(203, 203, 203);
+  display: block; 
+  position: absolute;
+  bottom: -25px;
+  left: calc(50% - 10px);
+  transition: opacity 1s linear;
+}
+
+.cursor.hide{
+  /* so animation can play */
+
+  opacity: 0;
+}
+
+.cursor.hide2{
+  display: none;
+}
 
 .boxes {
   /* border: thin solid aliceblue */
